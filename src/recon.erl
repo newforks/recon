@@ -149,13 +149,15 @@
 
 %%% Process Info %%%
 
-%% @doc Equivalent to `info(<A.B.C>)' where `A', `B', and `C' are integers part
+%% @doc 等同于info(<A.B.C>)
+%%
+%% Equivalent to `info(<A.B.C>)' where `A', `B', and `C' are integers part
 %% of a pid
 -spec info(N,N,N) -> [{info_type(), [{info_key(),term()}]},...] when
       N :: non_neg_integer().
 info(A,B,C) -> info(recon_lib:triple_to_pid(A,B,C)).
 
-%% @doc Equivalent to `info(<A.B.C>, Key)' where `A', `B', and `C' are integers part
+%% @doc 等同于info(<A.B.C>, Key)   =>  Equivalent to `info(<A.B.C>, Key)' where `A', `B', and `C' are integers part
 %% of a pid
 -spec info(N,N,N, Key) -> term() when
       N :: non_neg_integer(),
@@ -163,7 +165,11 @@ info(A,B,C) -> info(recon_lib:triple_to_pid(A,B,C)).
 info(A,B,C, Key) -> info(recon_lib:triple_to_pid(A,B,C), Key).
 
 
-%% @doc Allows to be similar to `erlang:process_info/1', but excludes fields
+%% @doc 类似`erlang:process_info/1`,过滤一些字段,如mailbox;增加一些字段,如`monitors', `monitored_by'
+%%  说明: 参数可以是多种类型: pid, atom, string, {A,B,C}, {global, X}, {via, Module, Func}
+%%       主字段有:[meta, signals, location, memory_used, work]
+%%
+%% Allows to be similar to `erlang:process_info/1', but excludes fields
 %% such as the mailbox, which have a tendency to grow and be unsafe when called
 %% in production systems. Also includes a few more fields than what is usually
 %% given (`monitors', `monitored_by', etc.), and separates the fields in a more
@@ -180,7 +186,12 @@ info(PidTerm) ->
     Pid = recon_lib:term_to_pid(PidTerm),
     [info(Pid, Type) || Type <- [meta, signals, location, memory_used, work]].
 
-%% @doc Allows to be similar to `erlang:process_info/2', but allows to
+%% @doc 类似`erlang:process_info/2`,过滤一些字段,如mailbox;增加一些字段,如`monitors', `monitored_by'
+%%  说明: 参数可以是多种类型: pid, atom, string, {A,B,C}, {global, X}, {via, Module, Func}
+%%       主字段有:[meta, signals, location, memory_used, work]
+%%
+%%
+%% Allows to be similar to `erlang:process_info/2', but allows to
 %% sort fields by safe categories and pre-selections, avoiding items such
 %% as the mailbox, which may have a tendency to grow and be unsafe when
 %% called in production systems.
@@ -251,7 +262,9 @@ proc_fake([binary_memory|T1], [{binary,Bins}|T2]) ->
 proc_fake([_|T1], [H|T2]) ->
     [H | proc_fake(T1,T2)].
 
-%% @doc Fetches a given attribute from all processes (except the
+%% @doc 得到所有进程(除调用者)指定attribute的并返回前Num个进程
+%%
+%% Fetches a given attribute from all processes (except the
 %% caller) and returns the biggest `Num' consumers.
 -spec proc_count(AttributeName, Num) -> [proc_attrs()] when
       AttributeName :: atom(),
@@ -259,7 +272,13 @@ proc_fake([_|T1], [H|T2]) ->
 proc_count(AttrName, Num) ->
     recon_lib:sublist_top_n_attrs(recon_lib:proc_attrs(AttrName), Num).
 
-%% @doc Fetches a given attribute from all processes (except the
+%% @doc 得到所有进程(除调用者)指定attribute并返回滑动时间窗口内的最大条目
+%%  说明: 当node中的进程大都是短暂的,无法通过其他工具查看时使用
+%%
+%%  警告：此函数依赖于在两个快照处收集的数据，然后构建带有条目的字典以区分它们。
+%%        当你有数十万个进程时，这会对内存造成沉重的负担。
+%%
+%% Fetches a given attribute from all processes (except the
 %% caller) and returns the biggest entries, over a sliding time window.
 %%
 %% This function is particularly useful when processes on the node

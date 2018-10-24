@@ -15,4 +15,5 @@ erl_crash.dump
 /site/*.html
 .rebar/
 _build/
-
+.idea/
+recon.iml
